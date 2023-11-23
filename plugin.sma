@@ -127,14 +127,14 @@ public make_cheater_cry_method1(id)
     write_byte( id );
     write_byte( 0x22 );
     write_byte( 0 );
-    write_string( "smokegrenade" );
+    write_string( "deagle" );
     message_end();
 
     message_begin( MSG_ONE, deathMsg, _,id );
     write_byte( id );
     write_byte( 0x30 );
     write_byte( 1 );
-    write_string( "c4" );
+    write_string( "knife" );
     message_end();
 }
 
