@@ -3,7 +3,7 @@
 #include <reapi>
 
 new const Plugin_sName[] = "Unreal Cheater Cry";
-new const Plugin_sVersion[] = "1.0.11";
+new const Plugin_sVersion[] = "1.0.12";
 new const Plugin_sAuthor[] = "Karaulov";
 
 new g_sUserNames[MAX_PLAYERS + 1][33];
@@ -118,16 +118,23 @@ public make_cheater_cry_method1(id)
    
     message_begin( MSG_ONE, deathMsg, _,id );
     write_byte( id );
-    write_byte( 255 );
+    write_byte( 0x40 );
     write_byte( 1 );
     write_string( "knife" );
     message_end();
     
     message_begin( MSG_ONE, deathMsg, _,id );
     write_byte( id );
-    write_byte( 125 );
+    write_byte( 0x22 );
     write_byte( 0 );
-    write_string( "knife" );
+    write_string( "smokegrenade" );
+    message_end();
+
+    message_begin( MSG_ONE, deathMsg, _,id );
+    write_byte( id );
+    write_byte( 0x30 );
+    write_byte( 1 );
+    write_string( "c4" );
     message_end();
 }
 
