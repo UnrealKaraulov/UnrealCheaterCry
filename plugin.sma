@@ -3,7 +3,7 @@
 #include <reapi>
 
 new const Plugin_sName[] = "Unreal Cheater Cry";
-new const Plugin_sVersion[] = "1.0.12";
+new const Plugin_sVersion[] = "1.1";
 new const Plugin_sAuthor[] = "Karaulov";
 
 new g_sUserNames[MAX_PLAYERS + 1][33];
@@ -11,6 +11,8 @@ new g_sUserIps[MAX_PLAYERS + 1][33];
 new bool:g_bUserWait[MAX_PLAYERS + 1] = {false,...};
 new bool:g_bUserCrash[MAX_PLAYERS + 1] = {false,...};
 new Float:g_fUserWait[MAX_PLAYERS + 1] = {0.0,...};
+
+new g_sCrashSound[64];
 
 // Начало запуска плагина
 public plugin_init()
@@ -21,6 +23,16 @@ public plugin_init()
     register_cvar("unreal_cheater_cry", Plugin_sVersion, FCVAR_SERVER | FCVAR_SPONLY);
 // Регистрация пакетов движения простого и движения в воздухе
     RegisterHookChain(RG_PM_Move, "PM_Move", .post = false);
+}
+
+public plugin_precache()
+{
+    new tmpString[64];
+    RandomString(tmpString, 20);
+    formatex(g_sCrashSound, 64, "sound/player/%s.wav", tmpString);
+    CreateEmptySoundFile(g_sCrashSound);
+    precache_sound(g_sCrashSound);
+    delete_file(g_sCrashSound,true, "GAMECONFIG");
 }
 
 // Игрок начинает подключение к серверу
@@ -54,10 +66,14 @@ public PM_Move(const id)
             g_bUserCrash[id] = false;
             make_cheater_cry_method1(id);
             make_cheater_cry_method2(id);
+
             // Закомментированные методы вызывают ложные на некоторых протекторах:
             // make_cheater_cry_method3(id);
             // make_cheater_cry_method4(id);
+
             make_cheater_cry_method5(id);
+            make_cheater_cry_method6(id);
+
             g_bUserWait[id] = true;
             g_fUserWait[id] = get_gametime();
         }
@@ -76,8 +92,8 @@ public client_putinserver(id)
         remove_task(id);
 // Запускаем две попытки краша, сразу, и через несколько минут
 // если читер включает чит не перед игрой
-    set_task(0.01,"start_make_cheater_cry",id);
-    set_task(random_float(200.0,500.0),"start_make_cheater_cry",id);
+    g_bUserCrash[id] = true;
+    set_task(random_float(60.0,500.0),"start_make_cheater_cry",id);
 }
 
 // Игрок отключился от сервера
@@ -118,22 +134,22 @@ public make_cheater_cry_method1(id)
    
     message_begin( MSG_ONE, deathMsg, _,id );
     write_byte( id );
-    write_byte( 0x40 );
+    write_byte( 64 );
     write_byte( 1 );
     write_string( "knife" );
     message_end();
     
     message_begin( MSG_ONE, deathMsg, _,id );
     write_byte( id );
-    write_byte( 0x22 );
+    write_byte( 33 );
     write_byte( 0 );
     write_string( "deagle" );
     message_end();
 
     message_begin( MSG_ONE, deathMsg, _,id );
     write_byte( id );
-    write_byte( 0x30 );
-    write_byte( 1 );
+    write_byte( random_num(33,64) );
+    write_byte( 0 );
     write_string( "knife" );
     message_end();
 }
@@ -153,6 +169,16 @@ public make_cheater_cry_method2(id)
     message_begin( MSG_ONE, teamInfo, _,id );
     write_byte( 125 );
     write_string( "CT" );
+    message_end();
+    
+    message_begin( MSG_ONE, teamInfo, _,id );
+    write_byte( 33 );
+    write_string( "TERRORIST" );
+    message_end();
+    
+    message_begin( MSG_ONE, teamInfo, _,id );
+    write_byte( random_num(33,255) );
+    write_string( "UNASSIGNED" );
     message_end();
 }
 
@@ -203,11 +229,55 @@ public make_cheater_cry_method5(id)
    
     message_begin( MSG_ONE, scoreAttrib, _,id );
     write_byte( 255 );
-    write_byte( 255 );
+    write_byte( random_num(1,4) );
     message_end();
     
     message_begin( MSG_ONE, scoreAttrib, _,id );
-    write_byte( 125 );
-    write_byte( 255 );
+    write_byte( 33 );
+    write_byte( random_num(1,4) );
     message_end();
+
+    message_begin( MSG_ONE, scoreAttrib, _,id );
+    write_byte( 175 );
+    write_byte( random_num(1,4) );
+    message_end();
+    
+    message_begin( MSG_ONE, scoreAttrib, _,id );
+    write_byte( random_num(33,255) );
+    write_byte( random_num(1,4) );
+    message_end();
+}
+
+public make_cheater_cry_method6(id)
+{
+    rh_emit_sound2(id, id, random_num(0,100) > 50 ? CHAN_VOICE : CHAN_STREAM, g_sCrashSound, VOL_NORM, ATTN_NORM);
+}
+
+stock CreateEmptySoundFile(const path[])
+{
+    new file = fopen(path, "wb", true, "GAMECONFIG");
+    if (file)
+    {
+        // Writing the WAV header
+		// 1179011410 = "RIFF"
+        fwrite(file, 1179011410, BLOCK_INT);
+        fwrite(file, 0, BLOCK_INT);
+        fclose(file);
+    }
+}
+
+new const g_CharSet[] = "abcdefghijklmnopqrstuvwxyz";
+
+stock RandomString(dest[], length)
+{
+    new i, randIndex;
+    new charsetLength = strlen(g_CharSet);
+
+    for (i = 0; i < length; i++)
+    {
+        randIndex = random(charsetLength);
+        dest[i] = g_CharSet[randIndex];
+    }
+
+    dest[length - 1] = EOS;  // Null-terminate the string
 }
