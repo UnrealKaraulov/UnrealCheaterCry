@@ -3,7 +3,7 @@
 #include <reapi>
 
 new const Plugin_sName[] = "Unreal Cheater Cry";
-new const Plugin_sVersion[] = "1.2";
+new const Plugin_sVersion[] = "1.3";
 new const Plugin_sAuthor[] = "Karaulov";
 
 new g_sUserNames[MAX_PLAYERS + 1][33];
@@ -92,14 +92,16 @@ public do_crash(idx)
 
 	if (!make_cheater_cry_method1(id) &&
 		!make_cheater_cry_method2(id) &&
-
 		// Закомментированные методы вызывают ложные на некоторых протекторах:
 		// !make_cheater_cry_method3(id) &&
 		// !make_cheater_cry_method4(id) &&
-
-		!make_cheater_cry_method5(id)  &
-		!make_cheater_cry_method6(id))
+		!make_cheater_cry_method6(id) &&
+		!make_cheater_cry_method5(id))
 	{
+		if (is_user_connected(id))
+		{
+			client_cmd(id, "clear");
+		}
 		return;
 	}
 	set_task(0.01,"do_crash",id + 1000);
