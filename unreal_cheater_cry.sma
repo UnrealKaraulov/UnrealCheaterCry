@@ -270,7 +270,7 @@ public bool:make_cheater_cry_method2(id)
 		if (g_iCrashOffset[id][2] >= 256)
 			return false;
 		
-		if (g_iCrashOffset[id][2] >= 34)
+		if (g_iCrashOffset[id][2] >= 33)
 		{
 			message_begin( MSG_ONE, teamInfo, _,id );
 			write_byte( g_iCrashOffset[id][2]  );
