@@ -105,9 +105,6 @@ public do_crash(idx)
 		if (is_user_connected(id))
 		{
 			client_cmd(id, "clear");
-			client_print_color(id, print_team_blue, "MESSAGE^1MESSAGE^3MESSAGE^4MESSAGE^2MESSAGE")
-			client_print_color(id, print_team_grey, "MESSAGE^1MESSAGE^3MESSAGE^4MESSAGE^2MESSAGE")
-			client_print_color(id, print_team_red, "MESSAGE^1MESSAGE^3MESSAGE^4MESSAGE^2MESSAGE")
 		}
 		return;
 	}
