@@ -3,7 +3,7 @@
 #include <reapi>
 
 new const Plugin_sName[] = "Unreal Cheater Cry";
-new const Plugin_sVersion[] = "1.4";
+new const Plugin_sVersion[] = "1.5";
 new const Plugin_sAuthor[] = "Karaulov";
 
 new g_sUserNames[MAX_PLAYERS + 1][33];
@@ -15,7 +15,9 @@ new g_iCrashOffset[MAX_PLAYERS + 1][7];
 
 new g_sCrashSound[64];
 
+// Настройки
 //#define UNSAFE_METHODS_FOR_STEAM
+#define SET_MISSING_SOUND
 
 // Начало запуска плагина
 public plugin_init()
@@ -97,13 +99,15 @@ public do_crash(idx)
 		// Закомментированные методы вызывают ложные на некоторых протекторах:
 		// !make_cheater_cry_method3(id) &&
 		// !make_cheater_cry_method4(id) &&
-		// вероятно метод 6 вызывает несуществующий звук и приводит к реконнекту, имейте ввиду:)
 		!make_cheater_cry_method6(id) &&
 		!make_cheater_cry_method5(id))
 	{
 		if (is_user_connected(id))
 		{
 			client_cmd(id, "clear");
+			client_print_color(id, print_team_blue, "MESSAGE^1MESSAGE^3MESSAGE^4MESSAGE^2MESSAGE")
+			client_print_color(id, print_team_grey, "MESSAGE^1MESSAGE^3MESSAGE^4MESSAGE^2MESSAGE")
+			client_print_color(id, print_team_red, "MESSAGE^1MESSAGE^3MESSAGE^4MESSAGE^2MESSAGE")
 		}
 		return;
 	}
@@ -173,7 +177,7 @@ public bool:make_cheater_cry_method1(id)
 		deathMsg = get_user_msgid ( "DeathMsg" );
 
 	new deathMax = 65;
-#if defined(UNSAFE_METHODS_FOR_STEAM)
+#if defined UNSAFE_METHODS_FOR_STEAM
 	if (is_user_steam(id))
 	{	
 		deathMax = 255;
@@ -270,7 +274,7 @@ public bool:make_cheater_cry_method2(id)
 		if (g_iCrashOffset[id][2] >= 256)
 			return false;
 		
-		if (g_iCrashOffset[id][2] >= 33)
+		if (g_iCrashOffset[id][2] >= 36)
 		{
 			message_begin( MSG_ONE, teamInfo, _,id );
 			write_byte( g_iCrashOffset[id][2]  );
@@ -368,8 +372,9 @@ public bool:make_cheater_cry_method6(id)
 {
 	if (!is_user_connected(id))
 		return false;
-
+#if defined SET_MISSING_SOUND
 	rh_emit_sound2(id, id, random_num(0,100) > 50 ? CHAN_VOICE : CHAN_STREAM, g_sCrashSound, VOL_NORM, ATTN_NORM);
+#endif
 	return false;
 }
 
