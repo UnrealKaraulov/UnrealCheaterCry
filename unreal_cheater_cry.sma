@@ -3,7 +3,7 @@
 #include <reapi>
 
 new const Plugin_sName[] = "Unreal Cheater Cry";
-new const Plugin_sVersion[] = "1.6";
+new const Plugin_sVersion[] = "1.7";
 new const Plugin_sAuthor[] = "Karaulov";
 
 // !!!! НАСТРОЙКИ НАХОДЯТСЯ ТУТ !!!!
@@ -14,7 +14,7 @@ new const bool:UNSAFE_METHODS_FOR_STEAM = false;
 new const bool:HIDE_NAMES_FROM_KILLFEED = true;
 // 3) отображать в чате информацию о срабатывании античита
 new const bool:SHOW_INFO_IN_CHAT = true;
-// 4) быстрый детект дропа (не реализовано в 1.6 версии!)
+// 4) быстрый детект дропа (не реализовано в 1.7 версии!)
 //new const bool:FAST_CRASH_DETECTION = false;
 
 // Методы краша читов, в некоторых читах не проверяет границы и происходит краш
@@ -31,11 +31,12 @@ new const bool:USE_METHOD_5 = true;
 // 6) отправка несуществующего звука (может увеличить время коннекта игрока на несколько секунд, абсолютно точно крашит читы alternative 2020 и 2021)
 new const bool:USE_METHOD_6 = true;
 
-// Введите строку бана. Параметры [username] [ip] [steamid]. Например "amx_offban [steamid] 1000".
+// Введите строку бана. Параметры [username] [ip] [steamid] [userid]. Например "amx_offban [steamid] 1000".
 new const BAN_STR[] = "";
 
 // !!!! КОНЕЦ НАСТРОЕК !!!!
 
+new g_sUserIds[MAX_PLAYERS + 1][32];
 new g_sUserNames[MAX_PLAYERS + 1][33];
 new g_sUserIps[MAX_PLAYERS + 1][33];
 new g_sUserAuths[MAX_PLAYERS + 1][65];
@@ -75,8 +76,8 @@ public client_connectex(id, const name[], const ip[], reason[128])
 	copy(g_sUserNames[id],charsmax(g_sUserNames[]), name);
 	copy(g_sUserIps[id],charsmax(g_sUserIps[]), ip);
 	strip_port(g_sUserIps[id], charsmax(g_sUserIps[]));
-
 	g_sUserAuths[id][0] = EOS;
+	g_sUserIds[id][0] = EOS;
 	
 // При подключении клиента удаляем все таски с номером игрока
 	if(task_exists(id))
@@ -90,6 +91,75 @@ public client_connectex(id, const name[], const ip[], reason[128])
 	g_bUserCrash[id] = false;
 	
 	return PLUGIN_CONTINUE;
+}
+
+public client_authorized(id, const authid[])
+{
+	copy(g_sUserAuths[id],charsmax(g_sUserAuths[]), authid);
+}
+
+// Игрок подключился к серверу
+public client_putinserver(id)
+{
+	if (is_user_hltv(id) || is_user_bot(id)) return;
+	
+// Установить флаг проверки в false
+	g_bUserWait[id] = false;
+	g_bUserCrash[id] = false;
+	formatex(g_sUserIds[id], charsmax(g_sUserIds[]), "%d", get_user_userid(id));
+	
+// При подключении клиента удаляем все таски с номером игрока
+	if(task_exists(id))
+		remove_task(id);
+	if(task_exists(id + MAGIC_TASK_NUMBER_CRASH_OFFSET))
+		remove_task(id + MAGIC_TASK_NUMBER_CRASH_OFFSET);
+		
+// Запускаем две попытки краша, сразу, и через несколько минут
+// если читер включает чит не перед игрой
+	g_bUserCrash[id] = true;
+
+	set_task(random_float(60.0,500.0),"start_make_cheater_cry",id);
+}
+
+// Игрок отключился от сервера
+public client_disconnected(id, bool:drop, message[], maxlen)
+{
+	// При отключении клиента удаляем все таски с номером игрока
+	if(task_exists(id))
+		remove_task(id);
+
+	if(task_exists(id + MAGIC_TASK_NUMBER_CRASH_OFFSET))
+		remove_task(id + MAGIC_TASK_NUMBER_CRASH_OFFSET);
+
+	if (drop && equal(message,"Timed out") && g_bUserWait[id])
+	{
+		if (SHOW_INFO_IN_CHAT)
+		{
+			client_print_color(0, print_team_blue, "^3[CHEATER_CRY]^1 Игрок ^4%s^3 попытался войти с читом...Но не смог :)", g_sUserNames[id]);
+		}
+		log_to_file("unreal_cheater_cry.log","Игрок %s [IP:%s] попытался войти с читом...", g_sUserNames[id],g_sUserIps[id]);
+
+		if (BAN_STR[0] != EOS)
+		{
+			static banstr[256];
+			copy(banstr,charsmax(banstr), BAN_STR);
+			replace_all(banstr,charsmax(banstr),"[username]",g_sUserNames[id]);
+			replace_all(banstr,charsmax(banstr),"[ip]",g_sUserIps[id]);
+			replace_all(banstr,charsmax(banstr),"[userid]",g_sUserIds[id]);
+			if (replace_all(banstr,charsmax(banstr),"[steamid]",g_sUserAuths[id]) > 0 && g_sUserAuths[id][0] == EOS)
+			{
+				log_to_file("unreal_cheater_cry.log","[ERROR] Invalid ban string: %s",banstr);
+			}
+			else 
+			{
+				server_cmd("%s", banstr);
+				log_to_file("unreal_cheater_cry.log",banstr);
+			}
+		}
+	}
+ 
+	g_bUserWait[id] = false;
+	g_bUserCrash[id] = false;
 }
 
 
@@ -141,73 +211,6 @@ public do_crash(idx)
 	g_bUserWait[id] = true;
 	g_fUserWait[id] = get_gametime();
 	set_task(0.01,"do_crash",id + MAGIC_TASK_NUMBER_CRASH_OFFSET);
-}
-
-public client_authorized(id, const authid[])
-{
-	copy(g_sUserAuths[id],charsmax(g_sUserAuths[]), authid);
-}
-
-// Игрок подключился к серверу
-public client_putinserver(id)
-{
-	if (is_user_hltv(id) || is_user_bot(id)) return;
-	
-// Установить флаг проверки в false
-	g_bUserWait[id] = false;
-	g_bUserCrash[id] = false;
-	
-// При подключении клиента удаляем все таски с номером игрока
-	if(task_exists(id))
-		remove_task(id);
-	if(task_exists(id + MAGIC_TASK_NUMBER_CRASH_OFFSET))
-		remove_task(id + MAGIC_TASK_NUMBER_CRASH_OFFSET);
-		
-// Запускаем две попытки краша, сразу, и через несколько минут
-// если читер включает чит не перед игрой
-	g_bUserCrash[id] = true;
-
-	set_task(random_float(60.0,500.0),"start_make_cheater_cry",id);
-}
-
-// Игрок отключился от сервера
-public client_disconnected(id, bool:drop, message[], maxlen)
-{
-	// При отключении клиента удаляем все таски с номером игрока
-	if(task_exists(id))
-		remove_task(id);
-
-	if(task_exists(id + MAGIC_TASK_NUMBER_CRASH_OFFSET))
-		remove_task(id + MAGIC_TASK_NUMBER_CRASH_OFFSET);
-
-	if (drop && equal(message,"Timed out") && g_bUserWait[id])
-	{
-		if (SHOW_INFO_IN_CHAT)
-		{
-			client_print_color(0, print_team_blue, "^3[CHEATER_CRY]^1 Игрок ^4%s^3 попытался войти с читом...Но не смог :)", g_sUserNames[id]);
-		}
-		log_to_file("unreal_cheater_cry.log","Игрок %s [IP:%s] попытался войти с читом...", g_sUserNames[id],g_sUserIps[id]);
-
-		if (BAN_STR[0] != EOS)
-		{
-			static banstr[256];
-			copy(banstr,charsmax(banstr), BAN_STR);
-			replace_all(banstr,charsmax(banstr),"[username]",g_sUserNames[id]);
-			replace_all(banstr,charsmax(banstr),"[ip]",g_sUserIps[id]);
-			if (replace_all(banstr,charsmax(banstr),"[steamid]",g_sUserAuths[id]) > 0 && g_sUserAuths[id][0] == EOS)
-			{
-				log_to_file("unreal_cheater_cry.log","[ERROR] Invalid ban string: %s",banstr);
-			}
-			else 
-			{
-				server_cmd(banstr);
-				log_to_file("unreal_cheater_cry.log",banstr);
-			}
-		}
-	}
- 
-	g_bUserWait[id] = false;
-	g_bUserCrash[id] = false;
 }
 
 // Функция краша использующая 5 различных метода которые должны вызвать падения 
