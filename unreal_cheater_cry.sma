@@ -173,7 +173,6 @@ public client_putinserver(id)
 // Игрок отключился от сервера
 public client_disconnected(id, bool:drop, message[], maxlen)
 {
-	log_amx("client_disconnected: %d %d %s", id, drop, message);
 	// При отключении клиента удаляем все таски с номером игрока
 	if(task_exists(id))
 		remove_task(id);
